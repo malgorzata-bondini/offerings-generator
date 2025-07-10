@@ -31,16 +31,18 @@ with st.form("input_form"):
         sr_or_im_choice = ""
 
     is_corp = st.checkbox("CORP", False)
-    if is_corp:
-        service_deliverer = st.text_input("Who delivers the service", "")
-    else:
-        service_deliverer = ""
+    service_deliverer = st.text_input(
+        "Who delivers the service",
+        "",
+        disabled=not is_corp
+    )
 
     include_aliases = st.checkbox("Add Aliases", False)
-    if include_aliases:
-        aliases_input = st.text_input("Aliases", "")
-    else:
-        aliases_input = ""
+    aliases_input = st.text_input(
+        "Aliases",
+        "",
+        disabled=not include_aliases
+    )
 
     support_group_input = st.text_input(
         "Support group / Managed by group", ""
@@ -50,7 +52,7 @@ with st.form("input_form"):
 
 if generate_button_clicked:
     if not uploaded_templates:
-        st.error("Please upload at least one XLSX file")
+        st.error("Please upload at least one .xlsx file")
     else:
         with tempfile.TemporaryDirectory() as tmpdir:
             template_paths = []
@@ -60,6 +62,10 @@ if generate_button_clicked:
                 template_paths.append(temp_path)
 
             try:
+                # if the check-box is off, ignore the typed value
+                delivering_tag_final = service_deliverer.upper() if is_corp else ""
+                aliases_flag = include_aliases  # run_generator only needs the flag
+
                 result_path = run_generator(
                     keywords=[k.strip().lower() for k in keywords_input.split(",") if k.strip()],
                     new_apps=[a.strip() for a in apps_input.split(",") if a.strip()],
@@ -71,10 +77,10 @@ if generate_button_clicked:
                     rsl_duration=rsl_duration_input,
                     sr_or_im=sr_or_im_choice,
                     require_corp=is_corp,
-                    delivering_tag=service_deliverer.upper(),
+                    delivering_tag=delivering_tag_final,
                     support_group=support_group_input.split("/", 1)[0],
                     managed_by_group=support_group_input.split("/", 1)[-1],
-                    aliases_on=include_aliases,
+                    aliases_on=aliases_flag,
                     src_dir=Path(tmpdir),
                     out_dir=Path(tmpdir),
                 )
