@@ -81,7 +81,9 @@ def run_generator(*,
         )
         if require_corp:
             mask &= df["Name (Child Service Offering lvl 1)"].str.contains(r"\bCORP\b", case=False)
-            mask &= df["Name (Child Service Offering lvl 1)"].str.contains(rf"\b{re.escape(delivering_tag)}\b", case=False)
+            mask &= df["Name (Child Service Offering lvl 1)"].str.contains(
+                rf"\b{re.escape(delivering_tag)}\b", case=False
+            )
         else:
             mask &= ~df["Name (Child Service Offering lvl 1)"].str.contains(r"\bCORP\b", case=False)
 
@@ -97,7 +99,7 @@ def run_generator(*,
             if country == "DE":
                 receivers = ["DS DE", "HS DE"]
             elif country == "CY":
-                receivers = ["DS CY", "HS CY"]
+                receivers = ["HS CY", "DS CY"]
             elif country in {"UA", "MD"}:
                 receivers = [f"DS {country}"]
             elif country == "PL":
@@ -115,7 +117,6 @@ def run_generator(*,
         m_inner = re.search(r"\[Parent\s+(.*?)\]", parent_full, re.I)
         parent_inner = m_inner.group(1).strip() if m_inner else ""
         parent_desc = parent_full.split("]", 1)[-1].strip()
-
         inner_tokens = parent_inner.split()
 
         for app in new_apps:
@@ -171,16 +172,16 @@ def run_generator(*,
 
     if not sheets:
         raise ValueError(
-            "No rows matched your criteria. Please check your Keywords, CORP filter,"
-            " and that your template contains those entries."
+            "No rows matched your criteria. Please check your Keywords, CORP filter, "
+            "and that your template contains those entries."
         )
 
     out_dir.mkdir(parents=True, exist_ok=True)
     outfile = out_dir / f"Offerings_NEW_{dt.datetime.now():%Y%m%d_%H%M%S}.xlsx"
-    with pd.ExcelWriter(outfile, engine="openpyxl") as w:
+    with pd.ExcelWriter(outfile, engine="openpyxl") as writer:
         for cc, dfc in sheets.items():
-            dfc.drop_duplicates(subset=["Name (Child Service Offering lvl 1)"])\
-               .to_excel(w, sheet_name=cc, index=False)
+            dfc.drop_duplicates(subset=["Name (Child Service Offering lvl 1)"]) \
+               .to_excel(writer, sheet_name=cc, index=False)
 
     wb = load_workbook(outfile)
     for ws in wb.worksheets:
