@@ -26,18 +26,15 @@ with st.form("input_form"):
     if sr_or_im_choice == "Select…":
         sr_or_im_choice = ""
 
+    include_aliases = st.checkbox("Add Aliases")
+    aliases_input = st.text_input("Aliases if needed (comma separated)")
+
+    is_corp = st.checkbox("CORP in Child Service Offerings?")
+    service_deliverer = st.text_input("If CORP, who delivers the service (e.g. HS PL)")
+
     support_group_input = st.text_input("Support group / Managed by group")
 
     generate_clicked = st.form_submit_button("Generate")
-
-add_aliases = st.checkbox("Add Aliases")
-aliases_input = st.text_input("Aliases if needed (comma separated)", disabled=not add_aliases)
-
-is_corp = st.checkbox("CORP in Child Service Offerings?")
-service_deliverer = st.text_input(
-    "If CORP, who delivers the service (e.g. HS PL)",
-    disabled=not is_corp
-)
 
 if generate_clicked:
     if not uploaded_templates:
@@ -65,7 +62,7 @@ if generate_clicked:
             delivering_tag=service_deliverer.upper() if is_corp else "",
             support_group=support_group_input.split("/", 1)[0],
             managed_by_group=support_group_input.split("/", 1)[-1],
-            aliases_on=add_aliases,
+            aliases_on=include_aliases,
             src_dir=Path(tmpdir),
             out_dir=Path(tmpdir)
         )
