@@ -30,7 +30,7 @@ with st.form("input_form"):
     aliases_input = st.text_input("Aliases if needed (comma separated)")
 
     is_corp = st.checkbox("CORP in Child Service Offerings?")
-    service_deliverer = st.text_input("Who delivers the service (e.g. HS PL)")
+    service_deliverer = st.text_input("If CORP, Who delivers the service (e.g. HS PL)")
 
     support_group_input = st.text_input("Support group / Managed by group")
 
