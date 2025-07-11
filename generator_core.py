@@ -141,7 +141,7 @@ def run_generator(
                 r["Managed by Group"] = managed_by_group
                 for c in r.columns:
                     if "Aliases" in c:
-                        r[c] = ""
+                        r[c] = "-"
                 if country == "DE":
                     r["Subscribed by Company"] = (
                         "DE Internal Patients\nDE External Patients"
