@@ -1,3 +1,4 @@
+# app.py
 import streamlit as st
 import tempfile
 from pathlib import Path
@@ -21,19 +22,14 @@ with st.form("input_form"):
     is_global_prod = st.checkbox("Global Prod in Service Offerings?")
     rsp_input = st.text_input("RSP (e.g. 2h)")
     rsl_input = st.text_input("RSL (e.g. 5d)")
-
     sr_or_im_choice = st.selectbox("Select SR or IM", ["Select…", "SR", "IM"])
     if sr_or_im_choice == "Select…":
         sr_or_im_choice = ""
-
     include_aliases = st.checkbox("Add Aliases")
     aliases_input = st.text_input("Aliases if needed (comma separated)")
-
     is_corp = st.checkbox("CORP in Child Service Offerings?")
     service_deliverer = st.text_input("If CORP, who delivers the service (e.g. HS PL)")
-
     support_input = st.text_input("Support group / Managed by group")
-
     generate_clicked = st.form_submit_button("Generate")
 
 if generate_clicked:
@@ -60,12 +56,12 @@ if generate_clicked:
                 rsl_duration=rsl_input,
                 sr_or_im=sr_or_im_choice,
                 require_corp=is_corp,
-                delivering_tag=service_deliverer.upper(),
+                delivering_tag=service_deliverer.upper() if is_corp else "",
                 support_group=support_input.split("/", 1)[0],
                 managed_by_group=support_input.split("/", 1)[-1],
                 aliases_on=include_aliases,
                 src_dir=Path(tmpdir),
-                out_dir=Path(tmpdir),
+                out_dir=Path(tmpdir)
             )
         except ValueError as e:
             st.error(str(e))
