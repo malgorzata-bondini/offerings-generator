@@ -1,4 +1,3 @@
-# app.py
 import streamlit as st
 import tempfile
 from pathlib import Path
@@ -56,7 +55,7 @@ if generate_clicked:
                 rsl_duration=rsl_input,
                 sr_or_im=sr_or_im_choice,
                 require_corp=is_corp,
-                delivering_tag=service_deliverer.upper() if is_corp else "",
+                delivering_tag=service_deliverer.upper(),
                 support_group=support_input.split("/", 1)[0],
                 managed_by_group=support_input.split("/", 1)[-1],
                 aliases_on=include_aliases,
@@ -71,8 +70,4 @@ if generate_clicked:
             st.stop()
 
         st.success("Done, download the file below.")
-        st.download_button(
-            "Download your file",
-            output_path.read_bytes(),
-            file_name=output_path.name
-        )
+        st.download_button("Download your file", output_path.read_bytes(), file_name=output_path.name)
