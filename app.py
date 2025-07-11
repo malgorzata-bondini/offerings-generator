@@ -48,7 +48,7 @@ with st.form("input_form"):
 
 if generate_clicked:
     if not uploaded_templates:
-        st.error("Please upload at least one xlxs file.")
+        st.error("Please upload at least one XLSX file.")
     else:
         with tempfile.TemporaryDirectory() as tmpdir:
             template_paths = []
@@ -58,7 +58,7 @@ if generate_clicked:
                 template_paths.append(tmp_path)
 
             try:
-                output_path = run_generator(
+                result_path = run_generator(
                     keywords=[k.strip().lower() for k in keywords_input.split(",") if k.strip()],
                     new_apps=[a.strip() for a in apps_input.split(",") if a.strip()],
                     days=[d.strip() for d in day_blocks_input.split(",") if d.strip()],
@@ -78,9 +78,9 @@ if generate_clicked:
                 )
                 st.success("Done – download your file below.")
                 st.download_button(
-                    "Download xlsx",
-                    output_path.read_bytes(),
-                    file_name=output_path.name
+                    "Download XLSX",
+                    result_path.read_bytes(),
+                    file_name=result_path.name
                 )
             except Exception as e:
                 st.error(f"Something went wrong: {e}")
