@@ -1,3 +1,4 @@
+# generator_core.py
 import datetime as dt
 import re, warnings
 from pathlib import Path
@@ -81,7 +82,7 @@ def run_generator(*,
             mask &= ~df["Name (Child Service Offering lvl 1)"].str.contains(r"\bCORP\b",case=False)
 
         base_pool=df.loc[mask]
-        if base_pool.empty:
+        if base_pool.empty:   # nothing matched in this workbook
             continue
         base_row=base_pool.iloc[0].to_frame().T.copy()
 
@@ -150,4 +151,4 @@ def run_generator(*,
             for c in col:
                 c.alignment=Alignment(wrap_text=True)
     wb.save(outfile)
-    return outfile
+    return outfile        # <-- Streamlit will catch this and offer it to the user
