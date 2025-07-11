@@ -3,11 +3,11 @@ import tempfile
 from pathlib import Path
 from generator_core import run_generator
 
-st.set_page_config(page_title="ServicNow Offering Generator", layout="wide")
-st.title("ServiceNow Offering Generator")
+st.set_page_config(page_title="ServicNow Offerings Generator", layout="wide")
+st.title("ServiceNow Offerings Generator")
 
 uploaded_templates = st.file_uploader(
-    "Upload one or more offering files (.xlsx)",
+    "Upload one or more offering files (.xlsx) (Child lvl1)",
     type="xlsx",
     accept_multiple_files=True
 )
