@@ -1,3 +1,4 @@
+# generator_core.py
 import datetime as dt
 import re, warnings
 from pathlib import Path
@@ -20,20 +21,29 @@ need_cols = [
     "Life Cycle Status",
     "Support group",
     "Managed by Group",
-    "Subscribed by Company"
+    "Subscribed by Company",
 ]
 
-skip_hs_for = {"MD", "UA", "PL"}
 discard_lc = {"retired", "retiring", "end of life", "end of support"}
 
 def run_generator(
     *,
-    keywords, new_apps, days, hours,
-    delivery_manager, global_prod,
-    rsp_duration, rsl_duration,
-    sr_or_im, require_corp, delivering_tag,
-    support_group, managed_by_group, aliases_on,
-    src_dir: Path, out_dir: Path
+    keywords,
+    new_apps,
+    days,
+    hours,
+    delivery_manager,
+    global_prod,
+    rsp_duration,
+    rsl_duration,
+    sr_or_im,
+    require_corp,
+    delivering_tag,
+    support_group,
+    managed_by_group,
+    aliases_on,
+    src_dir: Path,
+    out_dir: Path,
 ):
     schedule_suffix = " ".join(f"{d} {h}" for d, h in zip(days, hours))
 
@@ -42,7 +52,7 @@ def run_generator(
         n = str(row["Name (Child Service Offering lvl 1)"]).lower()
         hit_p = {k for k in keywords if re.search(rf"\b{re.escape(k)}\b", p)}
         hit_n = {k for k in keywords if re.search(rf"\b{re.escape(k)}\b", n)}
-        return hit_p and hit_n and hit_p | hit_n == set(keywords)
+        return bool(hit_p) and bool(hit_n) and (hit_p | hit_n) == set(keywords)
 
     def lc_ok(row):
         return all(
@@ -53,27 +63,24 @@ def run_generator(
     def name_prefix_ok(name):
         return name.lower().startswith(f"[{sr_or_im.lower()} ")
 
-    # Zawsze 3 linie: SLA RSP, SLA RSL i OLA RSL
     def commit_block(cc):
         return "\n".join([
             f"[{cc}] SLA SR RSP {schedule_suffix} P1-P4 {rsp_duration}",
             f"[{cc}] SLA SR RSL {schedule_suffix} P1-P4 {rsl_duration}",
-            f"[{cc}] OLA SR RSL {schedule_suffix} P1-P4 {rsl_duration}"
+            f"[{cc}] OLA SR RSL {schedule_suffix} P1-P4 {rsl_duration}",
         ])
 
-    # Aktualizuje istniejące linie, nadpisuje godziny i priorytety oraz dokłada jedną OLA
-    def update_commitments(orig, sched, rsp, rsl):
-        out = []
-        # regex do znalezienia bloku dni i godzin
+    def update_commitments(orig):
         schedule_re = re.compile(r"(Mon[-–]Fri\s*)\d+-\d+")
+        out = []
         ola_done = False
         for line in str(orig).splitlines():
-            # podstaw nowy blok godzinowy
-            line = schedule_re.sub(rf"\1{sched}", line)
+            # normalize the day/hour block
+            line = schedule_re.sub(rf"\1{schedule_suffix}", line)
             if "RSP" in line and line.strip().startswith("["):
-                line = re.sub(r"P1-P4 .*?$", f"P1-P4 {rsp}", line)
+                line = re.sub(r"P1-P4 .*?$", f"P1-P4 {rsp_duration}", line)
             elif "RSL" in line and line.strip().startswith("["):
-                line = re.sub(r"P1-P4 .*?$", f"P1-P4 {rsl}", line)
+                line = re.sub(r"P1-P4 .*?$", f"P1-P4 {rsl_duration}", line)
                 if not ola_done:
                     ola = line.replace("SLA", "OLA", 1)
                     out.append(ola)
@@ -93,7 +100,7 @@ def run_generator(
             df.apply(row_keywords_ok, axis=1)
             & df["Name (Child Service Offering lvl 1)"].astype(str).apply(name_prefix_ok)
             & df.apply(lc_ok, axis=1)
-            & (df["Service Commitments"].astype(str).str.strip().replace({"nan": ""}) != "-")
+            & (df["Service Commitments"].astype(str).str.strip().replace({"nan": ""}) != "")
         )
         if require_corp:
             mask &= df["Name (Child Service Offering lvl 1)"].str.contains(r"\bCORP\b", case=False)
@@ -133,7 +140,11 @@ def run_generator(
         for app in new_apps:
             for recv in receivers:
                 tag_in = tag_ds if recv.startswith("DS") else tag_hs
-                head = f"[{sr_or_im} {delivering_tag} CORP {recv}" if require_corp else f"[{sr_or_im} {tag_in}"
+                head = (
+                    f"[{sr_or_im} {delivering_tag} CORP {recv}"
+                    if require_corp
+                    else f"[{sr_or_im} {tag_in}"
+                )
                 rest = " ".join(t for t in inner_toks if t not in recv.split())
                 name_head = f"{head} {rest}]".replace("  ", " ").replace(" ]", "]")
                 new_name = f"{name_head} {parent_desc} {app} Prod {schedule_suffix}".replace("  ", " ")
@@ -148,7 +159,7 @@ def run_generator(
                 r["Managed by Group"] = managed_by_group
                 for c in r.columns:
                     if "Aliases" in c:
-                        r[c] = ""   # puste
+                        r[c] = ""
                 if country == "DE":
                     r["Subscribed by Company"] = (
                         "DE Internal Patients\nDE External Patients" if tag_in == tag_hs
@@ -160,10 +171,10 @@ def run_generator(
                     r["Subscribed by Company"] = tag_in
 
                 orig = str(r.iloc[0]["Service Commitments"]).strip()
-                if not orig or orig == "-":
+                if not orig:
                     r["Service Commitments"] = commit_block(country)
                 else:
-                    r["Service Commitments"] = update_commitments(orig, schedule_suffix, rsp_duration, rsl_duration)
+                    r["Service Commitments"] = update_commitments(orig)
 
                 if global_prod:
                     dtg = "Global Prod"
@@ -178,8 +189,7 @@ def run_generator(
 
     if not sheets:
         raise ValueError(
-            "No rows matched your criteria. "
-            "Please check your Keywords, CORP filter, and that your template contains those entries."
+            "No rows matched your criteria. Please check your Keywords, CORP filter, and that your template contains those entries."
         )
 
     out_dir.mkdir(parents=True, exist_ok=True)
