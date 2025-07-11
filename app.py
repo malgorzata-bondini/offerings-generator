@@ -71,5 +71,5 @@ if generate:
             st.error(str(e))
             st.stop()
 
-        st.success("Done – download your file below.")
-        st.download_button("Download XLSX", outfile.read_bytes(), file_name=outfile.name)
+        st.success("Done, download your file below.")
+        st.download_button("Download xlsx", outfile.read_bytes(), file_name=outfile.name)
