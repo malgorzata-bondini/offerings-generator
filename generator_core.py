@@ -70,24 +70,6 @@ def run_generator(
             f"[{cc}] OLA SR RSL {schedule_suffix} P1-P4 {rsl_duration}",
         ])
 
-    def update_commitments(orig):
-        schedule_re = re.compile(r"(Mon[-–]Fri\s*)\d+-\d+")
-        out = []
-        ola_done = False
-        for line in str(orig).splitlines():
-            # normalize the day/hour block
-            line = schedule_re.sub(rf"\1{schedule_suffix}", line)
-            if "RSP" in line and line.strip().startswith("["):
-                line = re.sub(r"P1-P4 .*?$", f"P1-P4 {rsp_duration}", line)
-            elif "RSL" in line and line.strip().startswith("["):
-                line = re.sub(r"P1-P4 .*?$", f"P1-P4 {rsl_duration}", line)
-                if not ola_done:
-                    ola = line.replace("SLA", "OLA", 1)
-                    out.append(ola)
-                    ola_done = True
-            out.append(line)
-        return "\n".join(out)
-
     sheets = {}
     seen = set()
 
@@ -142,8 +124,8 @@ def run_generator(
                 tag_in = tag_ds if recv.startswith("DS") else tag_hs
                 head = (
                     f"[{sr_or_im} {delivering_tag} CORP {recv}"
-                    if require_corp
-                    else f"[{sr_or_im} {tag_in}"
+                    if require_corp else
+                    f"[{sr_or_im} {tag_in}"
                 )
                 rest = " ".join(t for t in inner_toks if t not in recv.split())
                 name_head = f"{head} {rest}]".replace("  ", " ").replace(" ]", "]")
@@ -162,19 +144,17 @@ def run_generator(
                         r[c] = ""
                 if country == "DE":
                     r["Subscribed by Company"] = (
-                        "DE Internal Patients\nDE External Patients" if tag_in == tag_hs
-                        else "DE IFLB Laboratories\nDE IMD Laboratories"
+                        "DE Internal Patients\nDE External Patients"
+                        if tag_in == tag_hs else
+                        "DE IFLB Laboratories\nDE IMD Laboratories"
                     )
                 elif country == "UA":
                     r["Subscribed by Company"] = "Сiнево Україна"
                 else:
                     r["Subscribed by Company"] = tag_in
 
-                orig = str(r.iloc[0]["Service Commitments"]).strip()
-                if not orig:
-                    r["Service Commitments"] = commit_block(country)
-                else:
-                    r["Service Commitments"] = update_commitments(orig)
+                # always overwrite with our 3-line block
+                r["Service Commitments"] = commit_block(country)
 
                 if global_prod:
                     dtg = "Global Prod"
@@ -189,7 +169,8 @@ def run_generator(
 
     if not sheets:
         raise ValueError(
-            "No rows matched your criteria. Please check your Keywords, CORP filter, and that your template contains those entries."
+            "No rows matched your criteria. "
+            "Please check your Keywords, CORP filter, and that your template contains those entries."
         )
 
     out_dir.mkdir(parents=True, exist_ok=True)
