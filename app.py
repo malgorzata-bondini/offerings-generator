@@ -17,7 +17,7 @@ with st.form("input_form"):
     apps_input = st.text_input("New apps (comma-separated)")
     day_blocks_input = st.text_input("Days (e.g. Mon-Fri; comma-separated)")
     hour_blocks_input = st.text_input("Hours (e.g. 9-17; comma-separated)")
-    manager_name = st.text_input("Delivery-manager name")
+    manager_name = st.text_input("Delivery manager name")
     is_global_prod = st.checkbox("Global Prod")
     rsp_input = st.text_input("RSP duration (e.g. 2h)")
     rsl_input = st.text_input("RSL duration (e.g. 5d)")
@@ -30,17 +30,17 @@ with st.form("input_form"):
     if sr_or_im_choice == "Select…":
         sr_or_im_choice = ""
 
+    include_aliases = st.checkbox("Add Aliases")
+    if include_aliases:
+        aliases_input = st.text_input("Aliases (comma-separated)")
+    else:
+        aliases_input = ""
+
     is_corp = st.checkbox("CORP")
     if is_corp:
         service_deliverer = st.text_input("Who delivers the service (e.g. HS PL)")
     else:
         service_deliverer = ""
-
-    include_aliases = st.checkbox("Add Aliases")
-    if include_aliases:
-        aliases_input = st.text_input("Alias(es)")
-    else:
-        aliases_input = ""
 
     support_input = st.text_input("Support group / Managed-by group")
 
