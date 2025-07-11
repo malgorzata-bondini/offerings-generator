@@ -1,3 +1,4 @@
+# generator_core.py
 import datetime as dt
 import re, warnings
 from pathlib import Path
@@ -79,9 +80,7 @@ def run_generator(*,
                  .apply(name_prefix_ok)
             & df.apply(lc_ok, axis=1)
             & (df["Service Commitments"]
-                 .astype(str)
-                 .str.strip()
-                 .replace({"nan":""}) != "-")
+                 .astype(str).str.strip().replace({"nan":""}) != "-")
         )
 
         if require_corp:
@@ -109,8 +108,7 @@ def run_generator(*,
             elif country == "PL":
                 receivers = (
                     ["DS PL"]
-                    if "DS PL" in base_pool["Name (Child Service Offering lvl 1)"]
-                                            .str.cat(sep=" ")
+                    if "DS PL" in base_pool["Name (Child Service Offering lvl 1)"].str.cat(sep=" ")
                     else ["HS PL"]
                 )
             else:
@@ -118,23 +116,19 @@ def run_generator(*,
         else:
             receivers = [""]
 
-        parent_full = str(base_row.iloc[0]["Parent Offering"])
-        m_inner = re.search(r"\[Parent\s+(.*?)\]", parent_full, re.I)
+        parent_full  = str(base_row.iloc[0]["Parent Offering"])
+        m_inner      = re.search(r"\[Parent\s+(.*?)\]", parent_full, re.I)
         parent_inner = m_inner.group(1).strip() if m_inner else ""
-        parent_desc = parent_full.split("]",1)[-1].strip()
+        parent_desc  = parent_full.split("]",1)[-1].strip()
         inner_tokens = parent_inner.split()
 
         for app in new_apps:
             for recv in receivers:
                 tag_in = tag_ds if recv.startswith("DS") else tag_hs
-                if require_corp:
-                    head = f"[{sr_or_im} {delivering_tag} CORP {recv}"
-                else:
-                    head = f"[{sr_or_im} {tag_in}"
-
-                recv_tokens = recv.split()
-                filtered = [tok for tok in inner_tokens if tok not in recv_tokens]
-                rest = " ".join(filtered)
+                head   = (f"[{sr_or_im} {delivering_tag} CORP {recv}"
+                          if require_corp else f"[{sr_or_im} {tag_in}")
+                filtered = [tok for tok in inner_tokens if tok not in recv.split()]
+                rest     = " ".join(filtered)
 
                 name_head = f"{head} {rest}]".replace("  "," ").replace(" ]","]")
                 new_name  = f"{name_head} {parent_desc} {app} Prod {schedule_suffix}".replace("  "," ")
@@ -149,41 +143,49 @@ def run_generator(*,
                 row["Managed by Group"]              = managed_by_group
                 for c in [c for c in row.columns if "Aliases" in c]:
                     row[c] = aliases_value
-                if country == "DE":
+                if country=="DE":
                     row["Subscribed by Company"] = (
                         "DE Internal Patients\nDE External Patients"
-                        if tag_in == tag_hs
-                        else "DE IFLB Laboratories\nDE IMD Laboratories"
+                        if tag_in==tag_hs else "DE IFLB Laboratories\nDE IMD Laboratories"
                     )
-                elif country == "UA":
+                elif country=="UA":
                     row["Subscribed by Company"] = "Сiнево Україна"
                 else:
                     row["Subscribed by Company"] = tag_in
                 orig_comm = str(row.iloc[0]["Service Commitments"]).strip()
                 row["Service Commitments"] = (
                     commit_block(country)
-                    if not orig_comm or orig_comm == "-"
+                    if not orig_comm or orig_comm=="-"
                     else update_commitments(orig_comm, schedule_suffix, rsp_duration, rsl_duration)
                 )
-                if require_corp:
-                    depend_tag = f"{delivering_tag} Prod"
-                elif global_prod or "servicenow" in app.lower():
-                    depend_tag = "Global Prod"
-                else:
-                    depend_tag = f"{tag_in} Prod"
+                depend_tag = (
+                    f"{delivering_tag} Prod"
+                    if require_corp else
+                    "Global Prod"
+                    if global_prod or "servicenow" in app.lower() else
+                    f"{tag_in} Prod"
+                )
                 row["Service Offerings | Depend On (Application Service)"] = f"[{depend_tag}] {app}"
+
                 sheets.setdefault(country, pd.DataFrame())
                 sheets[country] = pd.concat([sheets[country], row], ignore_index=True)
 
     if not sheets:
-        raise ValueError("No rows matched your criteria. Please check your Keywords, CORP filter, and that your template contains those entries.")
+        raise ValueError(
+            "No rows matched your criteria. Please check your Keywords, CORP filter, "
+            "and that your template contains those entries."
+        )
 
     out_dir.mkdir(parents=True, exist_ok=True)
     outfile = out_dir / f"Offerings_NEW_{dt.datetime.now():%Y%m%d_%H%M%S}.xlsx"
     with pd.ExcelWriter(outfile, engine="openpyxl") as writer:
         for cc, dfc in sheets.items():
-            dfc.drop_duplicates(subset=["Name (Child Service Offering lvl 1)"])\
-               .to_excel(writer, sheet_name=cc, index=False)
+            # drop any "Number" column before saving
+            df_export = (
+                dfc.drop_duplicates(subset=["Name (Child Service Offering lvl 1)"])
+                   .drop(columns=["Number"], errors="ignore")
+            )
+            df_export.to_excel(writer, sheet_name=cc, index=False)
 
     wb = load_workbook(outfile)
     for ws in wb.worksheets:
