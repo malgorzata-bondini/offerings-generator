@@ -31,7 +31,7 @@ with st.form("input_form"):
     if is_corp:
         service_deliverer = st.selectbox(
             "Who delivers the service?",
-            ["HS DE","DS DE","HS PL","DS PL","HS CY","DS CY","HS UA","DS UA","HS MD","DS MD"]
+            ["HS DE","DS DE","HS PL","DS PL","HS CY","DS CY","DS UA","DS MD"]
         )
     support_input = st.text_input("Support group / Managed by group")
     generate = st.form_submit_button("Generate")
