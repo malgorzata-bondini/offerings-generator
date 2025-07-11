@@ -1,6 +1,6 @@
-# generator_core.py
 import datetime as dt
-import re, warnings
+import re
+import warnings
 from pathlib import Path
 import pandas as pd
 from openpyxl import load_workbook
@@ -9,10 +9,18 @@ from openpyxl.styles import Alignment
 warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
 
 need_cols = [
-    "Name (Child Service Offering lvl 1)", "Parent Offering",
-    "Service Offerings | Depend On (Application Service)", "Service Commitments",
-    "Delivery Manager", "Subscribed by Location", "Phase", "Status",
-    "Life Cycle Stage", "Life Cycle Status", "Support group", "Managed by Group",
+    "Name (Child Service Offering lvl 1)",
+    "Parent Offering",
+    "Service Offerings | Depend On (Application Service)",
+    "Service Commitments",
+    "Delivery Manager",
+    "Subscribed by Location",
+    "Phase",
+    "Status",
+    "Life Cycle Stage",
+    "Life Cycle Status",
+    "Support group",
+    "Managed by Group",
     "Subscribed by Company"
 ]
 
@@ -29,7 +37,7 @@ def run_generator(
     src_dir: Path, out_dir: Path
 ):
     schedule_suffix = " ".join(f"{d} {h}" for d, h in zip(days, hours))
-    aliases_value = "" if aliases_on else ""
+    aliases_value = ""
     sheets = {}
     seen = set()
 
@@ -76,22 +84,15 @@ def run_generator(
 
         mask = (
             df.apply(row_keywords_ok, axis=1)
-            & df["Name (Child Service Offering lvl 1)"]
-                 .astype(str)
-                 .apply(name_prefix_ok)
+            & df["Name (Child Service Offering lvl 1)"].astype(str).apply(name_prefix_ok)
             & df.apply(lc_ok, axis=1)
-            & (df["Service Commitments"]
-                 .astype(str)
-                 .str.strip()
-                 .replace({"nan": ""}) != "-")
+            & (df["Service Commitments"].astype(str).str.strip().replace({"nan": ""}) != "-")
         )
 
         if require_corp:
-            mask &= df["Name (Child Service Offering lvl 1)"]\
-                       .str.contains(r"\bCORP\b", case=False)
+            mask &= df["Name (Child Service Offering lvl 1)"].str.contains(r"\bCORP\b", case=False)
         else:
-            mask &= ~df["Name (Child Service Offering lvl 1)"]\
-                        .str.contains(r"\bCORP\b", case=False)
+            mask &= ~df["Name (Child Service Offering lvl 1)"].str.contains(r"\bCORP\b", case=False)
 
         base_pool = df.loc[mask]
         if base_pool.empty:
@@ -162,12 +163,10 @@ def run_generator(
                 if not orig_comm or orig_comm == "-":
                     row["Service Commitments"] = commit_block(country)
                 else:
-                    row["Service Commitments"] = update_commitments(
-                        orig_comm, schedule_suffix, rsp_duration, rsl_duration
-                    )
+                    row["Service Commitments"] = update_commitments(orig_comm, schedule_suffix, rsp_duration, rsl_duration)
                 if require_corp:
                     depend_tag = f"{delivering_tag} Prod"
-                elif global_prod or "servicenow" in app.lower():
+                elif global_prod:
                     depend_tag = "Global Prod"
                 else:
                     depend_tag = f"{tag_in} Prod"
@@ -177,25 +176,25 @@ def run_generator(
                 sheets[country] = pd.concat([sheets[country], row], ignore_index=True)
 
     if not sheets:
-        raise ValueError(
-            "No rows matched your criteria. Please check your Keywords, CORP filter, and that your template contains those entries."
-        )
+        raise ValueError("No rows matched your criteria. Please check your Keywords, CORP filter, and that your template contains those entries.")
 
     out_dir.mkdir(parents=True, exist_ok=True)
     outfile = out_dir / f"Offerings_NEW_{dt.datetime.now():%Y%m%d_%H%M%S}.xlsx"
     with pd.ExcelWriter(outfile, engine="openpyxl") as writer:
         for cc, dfc in sheets.items():
-            df_export = dfc.drop_duplicates(subset=["Name (Child Service Offering lvl 1)"])\
-                           .drop(columns=["Number"], errors="ignore")
+            df_export = (
+                dfc.drop_duplicates(subset=["Name (Child Service Offering lvl 1)"])
+                   .drop(columns=["Number"], errors="ignore")
+                   .replace({True: "true", False: "false"})
+            )
             df_export.to_excel(writer, sheet_name=cc, index=False)
 
     wb = load_workbook(outfile)
     for ws in wb.worksheets:
         ws.auto_filter.ref = ws.dimensions
         for col in ws.columns:
-            ws.column_dimensions[col[0].column_letter].width = (
-                max(len(str(c.value)) if c.value else 0 for c in col) + 2
-            )
+            width = max(len(str(c.value)) if c.value else 0 for c in col) + 2
+            ws.column_dimensions[col[0].column_letter].width = width
             for c in col:
                 c.alignment = Alignment(wrap_text=True)
     wb.save(outfile)
