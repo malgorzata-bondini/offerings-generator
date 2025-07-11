@@ -68,4 +68,4 @@ if generate_clicked:
         )
 
         st.success("Done, download the file below.")
-        st.download_button("Download xlsx file", output_path.read_bytes(), file_name=output_path.name)
+        st.download_button("Download your file", output_path.read_bytes(), file_name=output_path.name)
