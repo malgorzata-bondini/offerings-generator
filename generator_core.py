@@ -29,7 +29,7 @@ def run_generator(*,
 
     schedule_suffix = " ".join(f"{d} {h}" for d, h in zip(days, hours))
     aliases_value   = "" if aliases_on else "-"
-    sheets, seen = {}, set()
+    sheets, seen    = {}, set()
 
     def row_keywords_ok(row):
         p = str(row["Parent Offering"]).lower()
@@ -82,7 +82,7 @@ def run_generator(*,
             mask &= ~df["Name (Child Service Offering lvl 1)"].str.contains(r"\bCORP\b",case=False)
 
         base_pool=df.loc[mask]
-        if base_pool.empty:   # nothing matched in this workbook
+        if base_pool.empty:
             continue
         base_row=base_pool.iloc[0].to_frame().T.copy()
 
@@ -90,26 +90,42 @@ def run_generator(*,
         tag_hs, tag_ds = f"HS {country}", f"DS {country}"
 
         if require_corp:
-            if country=="DE":         receivers=["DS DE","HS DE"]
-            elif country in {"UA","MD"}: receivers=[f"DS {country}"]
-            elif country=="PL":         receivers=["DS PL"] if "DS PL" in base_pool["Name (Child Service Offering lvl 1)"].str.cat(sep=" ") else ["HS PL"]
-            else:                       receivers=[f"DS {country}"]
+            if country=="DE":
+                receivers=["DS DE","HS DE"]
+            elif country in {"UA","MD"}:
+                receivers=[f"DS {country}"]
+            elif country=="PL":
+                receivers=["DS PL"] if "DS PL" in base_pool["Name (Child Service Offering lvl 1)"].str.cat(sep=" ") else ["HS PL"]
+            else:
+                receivers=[f"DS {country}"]
         else:
             receivers=[""]
 
         parent_full=str(base_row.iloc[0]["Parent Offering"])
-        inner=re.search(r"\[Parent\s+(.*?)\]",parent_full, re.I)
-        parent_inner=inner.group(1).strip() if inner else ""
+        m_inner=re.search(r"\[Parent\s+(.*?)\]",parent_full, re.I)
+        parent_inner=m_inner.group(1).strip() if m_inner else ""
         parent_desc=parent_full.split("]",1)[-1].strip()
+
+        inner_tokens=parent_inner.split()
 
         for app in new_apps:
             for recv in receivers:
-                tag_in = tag_ds if recv.startswith("DS") else tag_hs
-                head   = f"[{sr_or_im} {delivering_tag} CORP {recv}" if require_corp else f"[{sr_or_im} {tag_in}"
-                rest   = parent_inner[len(recv):].strip() if parent_inner.lower().startswith(recv.lower()) else parent_inner
-                name_head = f"{head} {rest}]".replace("  "," ").replace(" ]","]")
-                new_name  = f"{name_head} {parent_desc} {app} Prod {schedule_suffix}".replace("  "," ")
-                if new_name in seen:            # avoid duplicates
+                tag_in=tag_ds if recv.startswith("DS") else tag_hs
+
+                # Build the bracket head
+                if require_corp:
+                    head=f"[{sr_or_im} {delivering_tag} CORP {recv}"
+                else:
+                    head=f"[{sr_or_im} {tag_in}"
+
+                # Remove any duplicate region tags from parent_inner
+                recv_tokens=recv.split()
+                filtered=[tok for tok in inner_tokens if tok not in recv_tokens]
+                rest=" ".join(filtered)
+
+                name_head=f"{head} {rest}]".replace("  "," ").replace(" ]","]")
+                new_name=f"{name_head} {parent_desc} {app} Prod {schedule_suffix}".replace("  "," ")
+                if new_name in seen:
                     continue
                 seen.add(new_name)
 
@@ -128,9 +144,12 @@ def run_generator(*,
                     row["Subscribed by Company"]=tag_in
                 orig_comm=str(row.iloc[0]["Service Commitments"]).strip()
                 row["Service Commitments"]=commit_block(country) if not orig_comm or orig_comm=="-" else update_commitments(orig_comm,schedule_suffix,rsp_duration,rsl_duration)
-                depend_tag = (f"{delivering_tag} Prod" if require_corp else
-                              "Global Prod" if (global_prod or "servicenow" in app.lower()) else
-                              f"{tag_in} Prod")
+                if require_corp:
+                    depend_tag=f"{delivering_tag} Prod"
+                elif global_prod or "servicenow" in app.lower():
+                    depend_tag="Global Prod"
+                else:
+                    depend_tag=f"{tag_in} Prod"
                 row["Service Offerings | Depend On (Application Service)"]=f"[{depend_tag}] {app}"
                 sheets.setdefault(country,pd.DataFrame())
                 sheets[country]=pd.concat([sheets[country],row],ignore_index=True)
@@ -151,4 +170,4 @@ def run_generator(*,
             for c in col:
                 c.alignment=Alignment(wrap_text=True)
     wb.save(outfile)
-    return outfile        # <-- Streamlit will catch this and offer it to the user
+    return outfile
