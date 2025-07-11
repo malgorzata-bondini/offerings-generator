@@ -3,42 +3,42 @@ import tempfile
 from pathlib import Path
 from generator_core import run_generator
 
-st.set_page_config(page_title="Service-Offering Generator", layout="wide")
-st.title("Service-Offering Generator")
+st.set_page_config(page_title="ServicNow Offering Generator", layout="wide")
+st.title("ServiceNow Offering Generator")
 
 uploaded_templates = st.file_uploader(
-    "Upload one or more offerings files (.xlsx)",
+    "Upload one or more offering files (.xlsx)",
     type="xlsx",
     accept_multiple_files=True
 )
 
 with st.form("input_form"):
-    keywords_input = st.text_input("Keywords (comma-separated)")
-    apps_input = st.text_input("New apps (comma-separated)")
-    day_blocks_input = st.text_input("Days (e.g. Mon-Fri; comma-separated)")
-    hour_blocks_input = st.text_input("Hours (e.g. 9-17; comma-separated)")
-    manager_name = st.text_input("Delivery manager name")
-    is_global_prod = st.checkbox("Global Prod")
-    rsp_input = st.text_input("RSP duration (e.g. 2h)")
-    rsl_input = st.text_input("RSL duration (e.g. 5d)")
+    keywords_input = st.text_input("Keywords (comma separated)")
+    apps_input = st.text_input("New apps (comma separated)")
+    day_blocks_input = st.text_input("Days (e.g. Mon-Fri; comma separated)")
+    hour_blocks_input = st.text_input("Hours (e.g. 9-17; comma separated)")
+    manager_name = st.text_input("Delivery manager")
+    is_global_prod = st.checkbox("Global Prod in Service Offerings?")
+    rsp_input = st.text_input("RSP (e.g. 2h)")
+    rsl_input = st.text_input("RSL (e.g. 5d)")
 
     sr_or_im_choice = st.selectbox("Select SR or IM", ["Select…", "SR", "IM"], index=0)
     if sr_or_im_choice == "Select…":
         sr_or_im_choice = ""
 
     include_aliases = st.checkbox("Add Aliases")
-    aliases_input = st.text_input("Aliases (comma-separated)")
+    aliases_input = st.text_input("Aliases if needed (comma separated)")
 
-    is_corp = st.checkbox("CORP")
+    is_corp = st.checkbox("CORP in Child Service Offerings?")
     service_deliverer = st.text_input("Who delivers the service (e.g. HS PL)")
 
-    support_group_input = st.text_input("Support group / Managed-by group")
+    support_group_input = st.text_input("Support group / Managed by group")
 
     generate_clicked = st.form_submit_button("Generate")
 
 if generate_clicked:
     if not uploaded_templates:
-        st.error("Please upload at least one XLSX file.")
+        st.error("Please upload at least one xlsx file.")
         st.stop()
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -67,5 +67,5 @@ if generate_clicked:
             out_dir=Path(tmpdir)
         )
 
-        st.success("Done – download your file below.")
-        st.download_button("Download XLSX", output_path.read_bytes(), file_name=output_path.name)
+        st.success("Done, download the file below.")
+        st.download_button("Download xlsx file", output_path.read_bytes(), file_name=output_path.name)
