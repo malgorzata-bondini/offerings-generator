@@ -1,4 +1,3 @@
-# generator_core.py
 import datetime as dt
 import re, warnings
 from pathlib import Path
@@ -17,7 +16,7 @@ need_cols = [
 ]
 
 skip_hs_for = {"MD", "UA", "PL"}
-discard_lc = {"retired", "retiring", "end of life", "end of support"}
+discard_lc  = {"retired", "retiring", "end of life", "end of support"}
 
 def run_generator(*,
     keywords, new_apps, days, hours,
@@ -28,8 +27,8 @@ def run_generator(*,
     src_dir: Path, out_dir: Path):
 
     schedule_suffix = " ".join(f"{d} {h}" for d, h in zip(days, hours))
-    aliases_value = "" if aliases_on else "-"
-    sheets, seen = {}, set()
+    aliases_value   = "" if aliases_on else "-"
+    sheets, seen    = {}, set()
 
     def row_keywords_ok(row):
         p = str(row["Parent Offering"]).lower()
@@ -41,7 +40,7 @@ def run_generator(*,
     def lc_ok(row):
         return all(
             str(row[c]).strip().lower() not in discard_lc
-            for c in ("Phase", "Status", "Life Cycle Stage", "Life Cycle Status")
+            for c in ("Phase","Status","Life Cycle Stage","Life Cycle Status")
         )
 
     def name_prefix_ok(name):
@@ -75,17 +74,22 @@ def run_generator(*,
 
         mask = (
             df.apply(row_keywords_ok, axis=1)
-            & df["Name (Child Service Offering lvl 1)"].astype(str).apply(name_prefix_ok)
+            & df["Name (Child Service Offering lvl 1)"]
+                 .astype(str)
+                 .apply(name_prefix_ok)
             & df.apply(lc_ok, axis=1)
-            & (df["Service Commitments"].astype(str).str.strip().replace({"nan": ""}) != "-")
+            & (df["Service Commitments"]
+                 .astype(str)
+                 .str.strip()
+                 .replace({"nan":""}) != "-")
         )
+
         if require_corp:
-            mask &= df["Name (Child Service Offering lvl 1)"].str.contains(r"\bCORP\b", case=False)
-            mask &= df["Name (Child Service Offering lvl 1)"].str.contains(
-                rf"\b{re.escape(delivering_tag)}\b", case=False
-            )
+            mask &= df["Name (Child Service Offering lvl 1)"]\
+                       .str.contains(r"\bCORP\b", case=False)
         else:
-            mask &= ~df["Name (Child Service Offering lvl 1)"].str.contains(r"\bCORP\b", case=False)
+            mask &= ~df["Name (Child Service Offering lvl 1)"]\
+                        .str.contains(r"\bCORP\b", case=False)
 
         base_pool = df.loc[mask]
         if base_pool.empty:
@@ -97,15 +101,16 @@ def run_generator(*,
 
         if require_corp:
             if country == "DE":
-                receivers = ["DS DE", "HS DE"]
+                receivers = ["DS DE","HS DE"]
             elif country == "CY":
-                receivers = ["HS CY", "DS CY"]
-            elif country in {"UA", "MD"}:
+                receivers = ["HS CY","DS CY"]
+            elif country in {"UA","MD"}:
                 receivers = [f"DS {country}"]
             elif country == "PL":
                 receivers = (
                     ["DS PL"]
-                    if "DS PL" in base_pool["Name (Child Service Offering lvl 1)"].str.cat(sep=" ")
+                    if "DS PL" in base_pool["Name (Child Service Offering lvl 1)"]
+                                            .str.cat(sep=" ")
                     else ["HS PL"]
                 )
             else:
@@ -116,7 +121,7 @@ def run_generator(*,
         parent_full = str(base_row.iloc[0]["Parent Offering"])
         m_inner = re.search(r"\[Parent\s+(.*?)\]", parent_full, re.I)
         parent_inner = m_inner.group(1).strip() if m_inner else ""
-        parent_desc = parent_full.split("]", 1)[-1].strip()
+        parent_desc = parent_full.split("]",1)[-1].strip()
         inner_tokens = parent_inner.split()
 
         for app in new_apps:
@@ -131,17 +136,17 @@ def run_generator(*,
                 filtered = [tok for tok in inner_tokens if tok not in recv_tokens]
                 rest = " ".join(filtered)
 
-                name_head = f"{head} {rest}]".replace("  ", " ").replace(" ]", "]")
-                new_name = f"{name_head} {parent_desc} {app} Prod {schedule_suffix}".replace("  ", " ")
+                name_head = f"{head} {rest}]".replace("  "," ").replace(" ]","]")
+                new_name  = f"{name_head} {parent_desc} {app} Prod {schedule_suffix}".replace("  "," ")
                 if new_name in seen:
                     continue
                 seen.add(new_name)
 
                 row = base_row.copy()
                 row["Name (Child Service Offering lvl 1)"] = new_name
-                row["Delivery Manager"] = delivery_manager
-                row["Support group"] = support_group
-                row["Managed by Group"] = managed_by_group
+                row["Delivery Manager"]              = delivery_manager
+                row["Support group"]                 = support_group
+                row["Managed by Group"]              = managed_by_group
                 for c in [c for c in row.columns if "Aliases" in c]:
                     row[c] = aliases_value
                 if country == "DE":
@@ -171,16 +176,13 @@ def run_generator(*,
                 sheets[country] = pd.concat([sheets[country], row], ignore_index=True)
 
     if not sheets:
-        raise ValueError(
-            "No rows matched your criteria. Please check your Keywords, CORP filter, "
-            "and that your template contains those entries."
-        )
+        raise ValueError("No rows matched your criteria. Please check your Keywords, CORP filter, and that your template contains those entries.")
 
     out_dir.mkdir(parents=True, exist_ok=True)
     outfile = out_dir / f"Offerings_NEW_{dt.datetime.now():%Y%m%d_%H%M%S}.xlsx"
     with pd.ExcelWriter(outfile, engine="openpyxl") as writer:
         for cc, dfc in sheets.items():
-            dfc.drop_duplicates(subset=["Name (Child Service Offering lvl 1)"]) \
+            dfc.drop_duplicates(subset=["Name (Child Service Offering lvl 1)"])\
                .to_excel(writer, sheet_name=cc, index=False)
 
     wb = load_workbook(outfile)
