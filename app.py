@@ -6,7 +6,7 @@ from generator_core import run_generator
 st.set_page_config(page_title="Service-Offering Generator", layout="wide")
 st.title("Service-Offering Generator")
 
-uploaded_templates = st.file_uploader(
+templates = st.file_uploader(
     "Upload one or more offerings files (.xlsx)",
     type="xlsx",
     accept_multiple_files=True
@@ -30,29 +30,32 @@ with st.form("input_form"):
     if sr_or_im_choice == "Select…":
         sr_or_im_choice = ""
 
+    # First: aliases section
     include_aliases = st.checkbox("Add Aliases")
     if include_aliases:
         aliases_input = st.text_input("Aliases (comma-separated)")
     else:
         aliases_input = ""
 
+    # Next: CORP section
     is_corp = st.checkbox("CORP")
     if is_corp:
         service_deliverer = st.text_input("Who delivers the service (e.g. HS PL)")
     else:
         service_deliverer = ""
 
+    # Finally: support group
     support_input = st.text_input("Support group / Managed-by group")
 
     generate_clicked = st.form_submit_button("Generate")
 
 if generate_clicked:
-    if not uploaded_templates:
+    if not templates:
         st.error("Please upload at least one XLSX file.")
     else:
         with tempfile.TemporaryDirectory() as tmpdir:
             template_paths = []
-            for file in uploaded_templates:
+            for file in templates:
                 tmp_path = Path(tmpdir) / file.name
                 tmp_path.write_bytes(file.getbuffer())
                 template_paths.append(tmp_path)
